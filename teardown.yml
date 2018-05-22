@@ -4,72 +4,28 @@
   gather_facts: false
   connection: local
   vars:
-    res_group: test
+    res_group: lab
 
   pre_tasks:
     - name: Validate that we have a lab_id
       assert:
           that: lab_id is defined 
           msg: You need to pass lab_id as an extra parameter to execute this playbook
-          
+    
+    - name: Do we have our AZURE Credentials
+      assert:
+        { that: "{{ item}} != ''" }
+      with_items:
+        - azure_client_id
+        - azure_tenant
+        - azure_subscription_id
+        - azure_secret 
   tasks:
-    - name: Delete virtual machine
-      azure_rm_virtualmachine:
+    - name: Delete test resource group
+      azure_rm_resourcegroup:
+        client_id: "{{ azure_client_id }}"
+        tenant: "{{ azure_tenant }}"
+        subscription_id: "{{ azure_subscription_id }}"
+        secret: "{{ azure_secret }}"
         state: absent
-        resource_group: "{{ res_group }}"
-        name: "{{ item }}"
-      with_items:
-        - "centos{{ lab_id }}"
-        - "win{{ lab_id }}"
-
-    - name: Delete NIC
-      azure_rm_networkinterface:
-        state: absent
-        resource_group: "{{ res_group }}"
-        name: "{{ item }}"
-      with_items:
-        - "nic01{{ lab_id }}"
-        - "nic02{{ lab_id }}"
-
-    - name: Delete NIC security group
-      azure_rm_securitygroup:
-        resource_group: "{{ res_group }}"
-        name: "{{ item }}"
-        state: absent
-      with_items:
-        - "nic01{{ lab_id }}"
-        - "nic02{{ lab_id }}"
-
-    - name: Delete security group that allows SSH
-      azure_rm_securitygroup:
-        resource_group: "{{ res_group }}"
-        name: "sg{{lab_id}}"
-        state: absent
-
-    - name: Delete public ip
-      azure_rm_publicipaddress:
-        resource_group: "{{ res_group }}"
-        state: absent
-        name: "{{ item }}"
-      with_items:
-        - "pbi01{{ lab_id }}"
-        - "pbi02{{ lab_id }}"
-
-    - name: Delete subnet
-      azure_rm_subnet:
-        resource_group: "{{ res_group }}"
-        name: "sn{{ lab_id }}"
-        virtual_network_name: "vn{{ lab_id }}"
-        state: absent
-
-    - name: Delete virtual network
-      azure_rm_virtualnetwork:
-        resource_group: "{{ res_group }}"
-        name: "vn{{ lab_id }}"
-        state: absent
-
-    - name: Delete storage account
-      azure_rm_storageaccount:
-        resource_group: "{{ res_group }}"
-        name: "lrs{{ lab_id }}"
-        state: absent
+        name: "{{ res_group }}"
