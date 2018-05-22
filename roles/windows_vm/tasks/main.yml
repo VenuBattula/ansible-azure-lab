@@ -1,0 +1,28 @@
+---
+#
+# Install VisualStudio Code and Putty on the Windows VM
+#
+- name: Wait the Windows host to be ready
+  wait_for_connection:
+    delay: 60
+    timeout: 3000
+- name: Install packages
+  win_chocolatey:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ windows_vm_packages }}"
+- name: Create the required directory
+  win_file:
+    path: 'c:\labs'
+    state: directory 
+  with_items:
+    - 'c:\labs'
+    - 'c:\labs\.vscode'
+- name: Upload the required files
+  win_copy:
+    src: "{{ item }}"
+    dest: "c:\\labs\\{{ item }}"
+  with_items:
+    - "insecure"
+    - "insecure.pub"
+    - "vscode.sftp.json"

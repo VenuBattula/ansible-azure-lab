@@ -1,0 +1,63 @@
+---
+#
+# Install Tower and Prepare the Linux Host
+#
+- name: Wait for the CentOS host to be ready
+  wait_for:
+    port: 22
+    timeout: 3000
+  tags:
+    - centos_vm
+- name: Create the necessary folders
+  file:
+    path: "/home/{{ centos_vm_username }}/labs"
+    state: "directory"
+    owner: "{{ centos_vm_username }}"
+    mode: 0755
+    group: "{{ centos_vm_username }}"
+  tags:
+  - centos_vm
+- name: "Upload a better sudoers file"
+  template:
+    dest: "/etc/sudoers.d/waagent"
+    src: "waagent.j2" 
+    mode: 0600
+    owner: root 
+    group: root
+  tags:
+  - centos_vm
+- name: Get Ansible Tower
+  get_url:
+    dest: /var/tmp # required. Absolute path of where to download the file to.,If C(dest) is a directory, either the server provided filename or, if none provided, the base name of the URL on the remote server will be used. If a directory, C(force) has no effect.,If C(dest) is a directory, the file will always be downloaded (regardless of the C(force) option), but replaced only if the contents changed..
+    url: "{{ centos_vm_ansible_tower_release_url }}" # required. HTTP, HTTPS, or FTP URL in the form (http|https|ftp)://[user[:pass]]@host.domain[:port]/path
+  register: centos_vm_get_tower
+  tags:
+  - centos_vm
+- name: Extract Ansible Tower
+  unarchive:
+    dest: /var/tmp/ # required. Remote absolute path where the archive should be unpacked.
+    src: "/var/tmp/{{ centos_vm_ansible_tower_archive }}" # required. If C(remote_src=no) (default), local path to archive file to copy to the target server; can be absolute or relative. If C(remote_src=yes), path on the target server to existing archive file to unpack.,If C(remote_src=yes) and C(src) contains C(://), the remote machine will download the file from the URL first. (version_added 2.0). This is only for simple cases, for full download support use the M(get_url) module.
+    remote_src: yes # not required. Set to C(yes) to indicate the archived file is already on the remote system and not local to the Ansible controller.,This option is mutually exclusive with C(copy).
+  when: centos_vm_get_tower.changed
+  tags:
+  - centos_vm
+- name: Configure Ansible Tower installer
+  replace:
+    path: "/var/tmp/{{ centos_vm_ansible_tower_basename }}-{{ centos_vm_ansible_tower_version }}/inventory" 
+    regexp: "^(.*)_password=''" 
+    replace: "\\1_password='ansible'"
+  when: centos_vm_get_tower.changed
+  tags:
+  - centos_vm
+- name: Execute Ansible Tower
+  command: "/var/tmp/{{ centos_vm_ansible_tower_basename }}-{{ centos_vm_ansible_tower_version }}/setup.sh"
+  when: centos_vm_get_tower.changed or centos_vm_ansible_tower_install != false
+  tags:
+  - centos_vm
+- name: Install winrm packages
+  yum: 
+    pkg: "{{item}}" 
+    state: latest
+  with_items: "{{ centos_vm_packages }}"
+  tags:
+  - centos_vm
